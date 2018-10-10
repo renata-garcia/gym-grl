@@ -32,18 +32,28 @@ class PendulumEnv(gym.Env):
         g = 9.81
         m = 0.055
         l = 0.042
+        J = 0.000191
+        b = 0.000003
+        K = 0.0536
+        R = 9.5
         dt = self.dt
 
         u = np.clip(u, -self.max_torque, self.max_torque)[0]
         self.last_u = u # for rendering
-        costs = angle_normalize(th)**2 + .1*thdot**2 + .001*(u**2)
+        #costs = angle_normalize(th)**2 + .1*thdot**2 + .001*(u**2) 
+        
+        #newthdot = thdot + (-3*g/(2*l) * np.sin(th + np.pi) + 3./(m*l**2)*u) * dt
+        newthdot = (1/J)*(m*g*l*np.sin(th)) -b*thdot - (K*K/R)*thdot + (K/R)*min(max(u, -3), 3)
 
-        newthdot = thdot + (-3*g/(2*l) * np.sin(th + np.pi) + 3./(m*l**2)*u) * dt
-        newth = th + newthdot*dt
+        #newth = th + newthdot*dt
+        newth = thdot
         newthdot = np.clip(newthdot, -self.max_speed, self.max_speed) #pylint: disable=E1111
+    
+        costs = -5*angle_normalize(th)**2 - .1*newthdot**2 - 1*(u**2) 
+        costs = costs * (newthdot - thdot) / 0.03
 
         self.state = np.array([newth, newthdot])
-        return self._get_obs(), -costs, False, {}
+        return self._get_obs(), costs, False, {}
 
     def reset(self):
         high = np.array([np.pi, 1])
