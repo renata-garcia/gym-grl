@@ -1,4 +1,5 @@
 import gym
+import time
 from gym import spaces
 from gym.utils import seeding
 import numpy as np
@@ -12,7 +13,7 @@ class PendulumEnv(gym.Env):
 
     def __init__(self):
         self.max_speed=8
-        self.max_torque=2.
+        self.max_torque=3.
         self.dt=.03
         self.viewer = None
 
@@ -47,10 +48,10 @@ class PendulumEnv(gym.Env):
 
         #newth = th + newthdot*dt
         newth = thdot
-        newthdot = np.clip(newthdot, -self.max_speed, self.max_speed) #pylint: disable=E1111
+        #newthdot = np.clip(newthdot, -self.max_speed, self.max_speed) #pylint: disable=E1111
     
         costs = -5*angle_normalize(th)**2 - .1*newthdot**2 - 1*(u**2) 
-        costs = costs * (newthdot - thdot) / 0.03
+        #costs = costs * (newthdot - thdot) / 0.03
 
         self.state = np.array([newth, newthdot])
         return self._get_obs(), costs, False, {}
@@ -66,6 +67,8 @@ class PendulumEnv(gym.Env):
         return np.array([np.cos(theta), np.sin(theta), thetadot])
 
     def render(self, mode='human'):
+
+        time.sleep(0.2)
 
         if self.viewer is None:
             from gym.envs.classic_control import rendering
