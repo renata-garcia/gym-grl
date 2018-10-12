@@ -13,6 +13,7 @@ class PendulumEnv(gym.Env):
 
     def __init__(self):
         self.max_speed=8
+        self.steps=5
         self.max_torque=3.
         self.dt=.03
         self.viewer = None
@@ -40,17 +41,55 @@ class PendulumEnv(gym.Env):
         dt = self.dt
 
         u = np.clip(u, -self.max_torque, self.max_torque)[0]
+        print("u: ", u, "\n")
         self.last_u = u # for rendering
         #costs = angle_normalize(th)**2 + .1*thdot**2 + .001*(u**2) 
-        
-        #newthdot = thdot + (-3*g/(2*l) * np.sin(th + np.pi) + 3./(m*l**2)*u) * dt
-        newthdot = (1/J)*(m*g*l*np.sin(th)) -b*thdot - (K*K/R)*thdot + (K/R)*min(max(u, -3), 3)
 
-        #newth = th + newthdot*dt
-        newth = thdot
-        #newthdot = np.clip(newthdot, -self.max_speed, self.max_speed) #pylint: disable=E1111
-    
+        #INTEGRAR
+
+        h = dt/self.steps #0.03 / 5
+
+        #newth, newthdot = self.state
+        for i in range(1,self.steps):
+            th, thdot = self.state
+            w = [1, 1/2, 1/2, 1]
+            k = []
+            states = []
+            for j in range(1,4):
+                th = th*w[j]
+                thdot = thdot*w[j]
+                
+                newthdot = (1/J)*(m*g*l*np.sin(th)) -b*thdot - (K*K/R)*thdot + (K/R)*min(max(u, -3), 3)
+                newth = th + newthdot*dt
+                
+                states[j] = (newth, newthdot)
+                k[j] = h* states[len(states)-1][1]
+                
+                th = newth
+                thdot = newthdot
+            
+            
+
+        # for (size_t ii=0; ii < steps_; ++ii)
+        # {
+            
+        # dynamics_->eom(*next, actuation, &xd);
+        # Vector k1 = h*xd;
+        # dynamics_->eom(*next + k1/2, actuation, &xd);
+        # Vector k2 = h*xd;
+        # dynamics_->eom(*next + k2/2, actuation, &xd);
+        # Vector k3 = h*xd;
+        # dynamics_->eom(*next + k3, actuation, &xd);
+        # Vector k4 = h*xd;
+
+        *next = *next + (k1+2*k2+2*k3+k4)/6;
+        }
+
         costs = -5*angle_normalize(th)**2 - .1*newthdot**2 - 1*(u**2) 
+        #print("newth: ", newth)
+        #print("costs: ", costs)
+        #print("th: ", th)
+        #print("newthdot: ", newthdot)
         #costs = costs * (newthdot - thdot) / 0.03
 
         self.state = np.array([newth, newthdot])
@@ -64,7 +103,8 @@ class PendulumEnv(gym.Env):
 
     def _get_obs(self):
         theta, thetadot = self.state
-        return np.array([np.cos(theta), np.sin(theta), thetadot])
+        #return np.array([np.cos(theta), np.sin(theta), thetadot])
+        return np.array([theta, thetadot])
 
     def render(self, mode='human'):
 
