@@ -43,48 +43,37 @@ class PendulumEnv(gym.Env):
         u = np.clip(u, -self.max_torque, self.max_torque)[0]
         print("u: ", u, "\n")
         self.last_u = u # for rendering
-        #costs = angle_normalize(th)**2 + .1*thdot**2 + .001*(u**2) 
 
         #INTEGRAR
-
         h = dt/self.steps #0.03 / 5
 
-        #newth, newthdot = self.state
-        for i in range(1,self.steps):
-            th, thdot = self.state
+        th, thdot = self.state
+        for i in range(0,self.steps):
             w = [1, 1/2, 1/2, 1]
             k = []
             states = []
-            for j in range(1,4):
+            for j in range(0,4):
+                print(j)
                 th = th*w[j]
                 thdot = thdot*w[j]
                 
                 newthdot = (1/J)*(m*g*l*np.sin(th)) -b*thdot - (K*K/R)*thdot + (K/R)*min(max(u, -3), 3)
                 newth = th + newthdot*dt
                 
-                states[j] = (newth, newthdot)
-                k[j] = h* states[len(states)-1][1]
-                
+                states.append((newth, newthdot))
+                k.append(h* states[len(states)-1][1])
+                print("states[j:", j, "]: ", states[j])
+                print("states: ", states)
+                print("k[0]: ", k[0])
                 th = newth
                 thdot = newthdot
+            print("k[0]: ", k[0])
+            print("k[0][0]: ", k[0][0])
+            print("k[0][1]: ", k[0][1])
+            print("w[0]: ", w[0])
+            th = th + sum(w[j]*k[j][0] for j in range(0,4))/6
+            thdot = thdot + sum(w[j]*k[j][1] for j in range(0,4))/6
             
-            
-
-        # for (size_t ii=0; ii < steps_; ++ii)
-        # {
-            
-        # dynamics_->eom(*next, actuation, &xd);
-        # Vector k1 = h*xd;
-        # dynamics_->eom(*next + k1/2, actuation, &xd);
-        # Vector k2 = h*xd;
-        # dynamics_->eom(*next + k2/2, actuation, &xd);
-        # Vector k3 = h*xd;
-        # dynamics_->eom(*next + k3, actuation, &xd);
-        # Vector k4 = h*xd;
-
-        *next = *next + (k1+2*k2+2*k3+k4)/6;
-        }
-
         costs = -5*angle_normalize(th)**2 - .1*newthdot**2 - 1*(u**2) 
         #print("newth: ", newth)
         #print("costs: ", costs)
