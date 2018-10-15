@@ -14,7 +14,7 @@ class PendulumEnv(gym.Env):
 
     def __init__(self):
         #TODO
-        self.max_speed=16
+        self.max_speed=100
         self.steps=5
         self.max_torque=3.
         self.dt=.03 #tau
@@ -76,8 +76,8 @@ class PendulumEnv(gym.Env):
 
     def _get_obs(self):
         theta, thetadot = self.state
-        #return np.array([np.cos(theta), np.sin(theta), thetadot])
-        return np.array([theta, thetadot])
+        #return np.array([theta, thetadot])
+        return np.array([np.cos(theta), np.sin(theta), thetadot])
 
     def render(self, mode='human'):
 
