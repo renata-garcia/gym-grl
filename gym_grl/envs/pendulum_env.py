@@ -1,3 +1,4 @@
+from decimal import * 
 import gym
 import time
 from gym import spaces
@@ -12,10 +13,11 @@ class PendulumEnv(gym.Env):
     }
 
     def __init__(self):
-        self.max_speed=8
+        #TODO
+        self.max_speed=16
         self.steps=5
         self.max_torque=3.
-        self.dt=.03
+        self.dt=.03 #tau
         self.viewer = None
 
         high = np.array([1., 1., self.max_speed])
@@ -29,64 +31,46 @@ class PendulumEnv(gym.Env):
         return [seed]
 
     def step(self,u):
-        th, thdot = self.state # th := theta
-
-        g = 9.81
-        m = 0.055
-        l = 0.042
-        J = 0.000191
-        b = 0.000003
-        K = 0.0536
-        R = 9.5
-        dt = self.dt
 
         u = np.clip(u, -self.max_torque, self.max_torque)[0]
-        print("u: ", u, "\n")
+        #print("u: ", u, "\n")
         self.last_u = u # for rendering
 
         #INTEGRAR
-        h = dt/self.steps #0.03 / 5
+        h = self.dt/self.steps
 
+        next = self.state
         th, thdot = self.state
-        for i in range(0,self.steps):
-            w = [1, 1/2, 1/2, 1]
-            k = []
-            states = []
-            for j in range(0,4):
-                print(j)
-                th = th*w[j]
-                thdot = thdot*w[j]
-                
-                newthdot = (1/J)*(m*g*l*np.sin(th)) -b*thdot - (K*K/R)*thdot + (K/R)*min(max(u, -3), 3)
-                newth = th + newthdot*dt
-                
-                states.append((newth, newthdot))
-                k.append(h* states[len(states)-1][1])
-                print("states[j:", j, "]: ", states[j])
-                print("states: ", states)
-                print("k[0]: ", k[0])
-                th = newth
-                thdot = newthdot
-            print("k[0]: ", k[0])
-            print("k[0][0]: ", k[0][0])
-            print("k[0][1]: ", k[0][1])
-            print("w[0]: ", w[0])
-            th = th + sum(w[j]*k[j][0] for j in range(0,4))/6
-            thdot = thdot + sum(w[j]*k[j][1] for j in range(0,4))/6
-            
-        costs = -5*angle_normalize(th)**2 - .1*newthdot**2 - 1*(u**2) 
-        #print("newth: ", newth)
-        #print("costs: ", costs)
-        #print("th: ", th)
-        #print("newthdot: ", newthdot)
-        #costs = costs * (newthdot - thdot) / 0.03
 
+        for i in range(0,self.steps):
+            
+            xd = eom( next[0], next[1], u)
+            k1 = (h*xd[0], h*xd[1])
+            
+            xd = eom( next[0] +  k1[0]*.5, next[1] +  k1[1]*.5, u)
+            k2 = (h*xd[0], h*xd[1])
+        
+            xd = eom( next[0] +  k2[0]*.5, next[1] +  k1[1]*.5, u)
+            k3 = (h*xd[0], h*xd[1])
+
+            xd = eom( next[0] +  k3[0], next[1] +  k3[1], u)
+            k4 = (h*xd[0], h*xd[1])
+        
+            next = next +  np.divide(((k1[0]+2*k2[0]+2*k3[0]+k4[0]), (k1[1]+2*k2[1]+2*k3[1]+k4[1])),6)
+           
+        newth, newthdot = next
+        
+        costs = -5*angle_normalize(th)**2 - .1*newthdot**2 - 1*(u**2)
+
+        newthdot = np.clip([newthdot], -self.max_speed, self.max_speed)[0]
+            
         self.state = np.array([newth, newthdot])
         return self._get_obs(), costs, False, {}
 
     def reset(self):
         high = np.array([np.pi, 1])
         self.state = self.np_random.uniform(low=-high, high=high)
+        self.state[1] = 0
         self.last_u = None
         return self._get_obs()
 
@@ -97,7 +81,7 @@ class PendulumEnv(gym.Env):
 
     def render(self, mode='human'):
 
-        time.sleep(0.2)
+        #time.sleep(0.2)
 
         if self.viewer is None:
             from gym.envs.classic_control import rendering
@@ -131,3 +115,18 @@ class PendulumEnv(gym.Env):
 def angle_normalize(x):
     return (((x+np.pi) % (2*np.pi)) - np.pi)
 
+def eom(a, ad, u):
+    J = 0.000191
+    m = 0.055
+    g = 9.81
+    l = 0.042
+    b = 0.000003
+    K = 0.0536
+    R = 9.5
+    getcontext().prec = 7 
+    sen_a = float(Decimal(np.sin(a))/Decimal(1)) 
+    add = (1/J)*(m*g*l*sen_a - b*ad - (K*K/R)*ad + (K/R)*min(max(u, -3), 3)) 
+
+    #print("::eom::ad: ", ad, " add: ", add)
+
+    return ad, add, 1
