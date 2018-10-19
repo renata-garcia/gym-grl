@@ -20,7 +20,8 @@ class PendulumEnv(gym.Env):
         self.dt=.03 #tau
         self.viewer = None
 
-        high = np.array([1., 1., self.max_speed])
+        #high = np.array([1., 1., self.max_speed])
+        high = np.array([np.pi, self.max_speed])
         self.action_space = spaces.Box(low=-self.max_torque, high=self.max_torque, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
 
@@ -35,6 +36,7 @@ class PendulumEnv(gym.Env):
         u = np.clip(u, -self.max_torque, self.max_torque)[0]
         #print("u: ", u, "\n")
         self.last_u = u # for rendering
+        
 
         #INTEGRAR
         h = self.dt/self.steps
@@ -50,7 +52,7 @@ class PendulumEnv(gym.Env):
             xd = eom( next[0] +  k1[0]*.5, next[1] +  k1[1]*.5, u)
             k2 = (h*xd[0], h*xd[1])
         
-            xd = eom( next[0] +  k2[0]*.5, next[1] +  k1[1]*.5, u)
+            xd = eom( next[0] +  k2[0]*.5, next[1] +  k2[1]*.5, u)
             k3 = (h*xd[0], h*xd[1])
 
             xd = eom( next[0] +  k3[0], next[1] +  k3[1], u)
@@ -70,14 +72,15 @@ class PendulumEnv(gym.Env):
     def reset(self):
         high = np.array([np.pi, 1])
         self.state = self.np_random.uniform(low=-high, high=high)
+        self.state[0] = np.pi
         self.state[1] = 0
         self.last_u = None
         return self._get_obs()
 
     def _get_obs(self):
         theta, thetadot = self.state
-        #return np.array([theta, thetadot])
-        return np.array([np.cos(theta), np.sin(theta), thetadot])
+        return np.array([theta, thetadot])
+        #return np.array([np.cos(theta), np.sin(theta), thetadot])
 
     def render(self, mode='human'):
 
@@ -128,5 +131,4 @@ def eom(a, ad, u):
     add = (1/J)*(m*g*l*sen_a - b*ad - (K*K/R)*ad + (K/R)*min(max(u, -3), 3)) 
 
     #print("::eom::ad: ", ad, " add: ", add)
-
-    return ad, add, 1
+    return ad, add
