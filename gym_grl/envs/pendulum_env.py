@@ -18,15 +18,21 @@ class PendulumEnv(gym.Env):
 
     def __init__(self):
         #GRL load configuration
-        self.conf = grlpy.Configurator("../../grl/cfg/pendulum/dpg.yaml")
+        self.conf = grlpy.Configurator("../../grl/cfg/pendulum/pendulum.yaml")
         #GRL instantiate configuration (construct objects)
         self.inst = self.conf.instantiate()
 
         #GRL Get reference to agent and environment
-        self.agent = grlpy.Agent(self.inst["experiment"]["agent"])
-        self.env = grlpy.Environment(self.inst["experiment"]["environment"])
-        max_speed = 100000
-        high = np.array([np.pi, max_speed])
+        #self.agent = grlpy.Agent(self.inst["experiment"]["agent"])
+        self.env = grlpy.Environment(self.inst["environment"])
+        max_speed = 100000 #TODO observation_max
+        obs_dims = float(str(self.inst["environment"]["task"]["observation_dims"]))
+        print("pendulum-grl:obs_dims: ", obs_dims)
+        if (obs_dims == 2):
+            high = np.array([np.pi, max_speed])
+        else:
+            high = np.array([1., 1., self.max_speed])
+
         self.observation_space = spaces.Box(low=-high, high=high,dtype=np.float32)
         #min_torque = float(str(self.inst["experiment"]["environment"]["task"]["action_min"][0]))
         #max_torque = float(str(self.inst["experiment"]["environment"]["task"]["action_max"][0]))
@@ -43,13 +49,13 @@ class PendulumEnv(gym.Env):
         self.last_u = u
         (self.obs, reward, self.terminal) = self.env.step(u)
         self.state = self.obs
-        self.action = self.agent.step(self.obs, reward)
+        #self.action = self.agent.step(self.obs, reward)
         return self.obs, reward, False, {}
 
     def reset(self):
         #GRL Restart environment and agent
         self.obs = self.env.start(0)
-        self.last_u = self.agent.start(self.obs)
+        self.last_u = 0 #self.agent.start(self.obs)
         self.state = self.obs
         return self.obs
 
