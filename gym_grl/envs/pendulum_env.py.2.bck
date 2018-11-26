@@ -1,7 +1,6 @@
 from decimal import * 
 import gym
 import time
-import math
 from gym import spaces
 from gym.utils import seeding
 import numpy as np
@@ -42,20 +41,24 @@ class PendulumEnv(gym.Env):
         self.terminal = 0
 
     def step(self,u):
-        (self.obs, reward, self.terminal) = self.env.step(u)
+        (self.state, reward, self.terminal) = self.env.step(u)
         self.last_u = u
         # print("pendulum:step:state: ", self.state, ", reward: ", reward, ", self._get_obs()", self._get_obs())
-        return self.obs, reward, False, {}
+        return self._get_obs(), reward, False, {}
 
     def reset(self):
         #GRL Restart environment and agent
-        # self.state = self.env.start(0)
+        self.state = self.env.start(0)
         self.last_u = 0 #self.agent.start(self.obs)
-        self.obs = self.env.start(0)
         # print("pendulum:reset:state: ", self.state, ", self._get_obs(): ", self._get_obs())
-        return self.obs
+        return self._get_obs()
+
+    def _get_obs(self):
+        theta, thetadot = self.state
+        return np.array([np.cos(theta), np.sin(theta), thetadot])
 
     def render(self, mode='human'):
+
         if self.viewer is None:
             from gym.envs.classic_control import rendering
             self.viewer = rendering.Viewer(500,500)
@@ -75,7 +78,7 @@ class PendulumEnv(gym.Env):
 
         self.viewer.add_onetime(self.img)
         #print("pendulum: state[0]: ", self.state[0], " - +pi/2", np.pi/2)
-        self.pole_transform.set_rotation(math.asin(self.obs[0]) - np.pi/2)
+        self.pole_transform.set_rotation(self.state[0] - np.pi/2)
         if self.last_u:
             self.imgtrans.scale = (-self.last_u/2, np.abs(self.last_u)/2)
 
